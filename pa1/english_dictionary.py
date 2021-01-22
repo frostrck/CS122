@@ -7,7 +7,7 @@
 # Revised: August 2015, AMR
 #   December 2017, AMR
 #
-# YOUR NAME HERE
+# Corry Ke 
 
 import os
 import sys
@@ -41,9 +41,16 @@ class EnglishDictionary(object):
 
         Returns: boolean
         '''
-        # ADD YOUR CODE HERE AND REPLACE THE False
-        # IN THE RETURN WITH A SUITABLE RETURN VALUE.
+        return self.is_word_helper(w, self.words, 0)
+    
+    def is_word_helper(self, w, node, i):
+        if i == len(w):
+            return node.final
+        char = w[i]
+        if char in node.sub:
+            return self.is_word_helper(w, node.sub[char], i + 1)
         return False
+
 
     def num_completions(self, prefix):
         '''
@@ -81,19 +88,89 @@ class EnglishDictionary(object):
         # ADD YOUR CODE HERE AND REPLACE THE EMPTY LIST
         # IN THE RETURN WITH A SUITABLE RETURN VALUE.
 
+        suffs = self.get_completion_node(self.words, prefix, 0)
+        return [suff for suff in suffs if suff]
+    
+    def get_completion_node(self, parent, suffix, i):
+        if i == len(suffix):
+            return self.get_completion_suffix(parent)
+        char = suffix[i]
+        if char in parent.sub:
+            return self.get_completion_node(parent.sub[char], suffix, i + 1)
         return []
+
+
+    def get_completion_suffix(self, parent):
+        if not parent.sub: 
+            return ['']
+
+        complete = []
+        for char, child in parent.sub.items():
+            child_suff = self.get_completion_suffix(child)
+            complete.extend([char + suff for suff in child_suff])
+
+        return complete
 
 
 class TrieNode(object):
     def __init__(self):
-        ### REPLACE pass with appropriate documentation and code
-        pass
+        self.count = 0
+        self.final = False
+        self.sub = {}
 
+    def _add_word_helper(self, word, i): 
+        '''
+        A recursive helper function that adds a word by traversing
+        trie nodes.
+
+        Inputs:
+            trie: (TrieNode) the current node of trie
+            word: (string) the complete word we are adding to the trie
+            i: (int) index used to extract the exact letter of word
+        
+        Returns:
+            None 
+        '''
+        if i < len(word):
+            char = word[i]
+            if char not in self.sub:
+                t = TrieNode()
+                self.sub[char] = t
+            else:
+                t = self.sub[char]
+            t._add_word_helper(word, i+1)
+        else:
+
+            self.final = True
+
+        self.count += 1
+            
     def add_word(self, word):
-        ### REPLACE pass with appropriate documentation and code
-        pass
+        '''
+        A recursive function that adds a word to the trie
+
+        Inputs:
+            trie: (TrieNode) the current node of trie
+            word: (string) the complete word we are adding to the trie
+
+        Returns:
+            None 
+        '''
+        self._add_word_helper(word, 0)
+        
+        
+    def __repr__(self):
+        ret = ''
+        for c, node in self.sub.items():
+            ret += f'char {c}, count: {str(node.count)}, final: {str(node.final)}; '
+            ret += node.__repr__()
+        return ret
 
     ### ADD ANY EXTRA METHODS HERE.
 
+
 if __name__ == "__main__":
-    autocorrect_shell.go("english_dictionary")
+    #autocorrect_shell.go("english_dictionary")
+
+    ed5 = EnglishDictionary("five")
+    print(ed5.get_completions("are"))
