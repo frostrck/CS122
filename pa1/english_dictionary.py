@@ -44,6 +44,19 @@ class EnglishDictionary(object):
         return self.is_word_helper(w, self.words, 0)
     
     def is_word_helper(self, w, node, i):
+        '''
+        Recursive helper that determines whether a complete
+        word ends on this node
+
+        Inputs:
+            w: (str) the word of interest
+            node: (TrieNode) the cuurent node
+            i: (int) the index that keeps track of our position in the word
+        
+        Returns:
+            (bool) whether a word ended on a node
+        '''
+
         if i == len(w):
             return node.final
         char = w[i]
@@ -66,6 +79,18 @@ class EnglishDictionary(object):
 
 
     def num_completions_r(self, trie, prefix, i):
+        '''
+        Recursive helper that gives the word count of a prefix
+        node.
+
+        Inputs:
+            trie: (TrieNode) the current TrieNode
+            prefix: (str) a string of prefix
+            i: (int) the index that keeps track of our position in the prefix
+        
+        Returns:
+            (int) number of words in the Trie that begins with prefix
+        '''
         
         if i == len(prefix):
             return trie.count
