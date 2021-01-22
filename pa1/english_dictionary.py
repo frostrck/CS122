@@ -62,18 +62,21 @@ class EnglishDictionary(object):
 
         Returns: int
         '''
-        # IMPORTANT: When you replace this version with the trie-based
-        # version, do NOT compute the number of completions simply as
-        #
-        #    len(self.get_completions(prefix))
-        #
-        # See PA writeup for more details.
+        return self.num_completions_r(self.words, prefix, 0)
 
-        # ADD YOUR CODE HERE AND REPLACE THE ZERO IN THE RETURN WITH A
-        # SUITABLE RETURN VALUE.
 
-        return 0
+    def num_completions_r(self, trie, prefix, i):
+        
+        if i == len(prefix):
+            return trie.count
+        
+        char = prefix[i]
+        if char in trie.sub:
+            return self.num_completions_r(trie.sub[char], prefix, i + 1)
+        else:
+            return 0
 
+        
     def get_completions(self, prefix):
         '''
         Get the suffixes in the dictionary of words that start with the
@@ -85,22 +88,43 @@ class EnglishDictionary(object):
         Returns: list of strings.
         '''
 
-        # ADD YOUR CODE HERE AND REPLACE THE EMPTY LIST
-        # IN THE RETURN WITH A SUITABLE RETURN VALUE.
-
         suffs = self.get_completion_node(self.words, prefix, 0)
         return [suff for suff in suffs if suff]
     
-    def get_completion_node(self, parent, suffix, i):
-        if i == len(suffix):
+    def get_completion_node(self, parent, prefix, i):
+        '''
+        A helper that recursively navigates the subtrie to get 
+        to children nodes of a parent
+        
+        Inputs:
+            parent: (TrieNode) the current, parent TrieNode
+            prefix: (string) the prefix of interest
+            i: (int) index that keeps track of the posistion of 
+
+        Returns: 
+            (lst) a list of all suffixes following a prefix 
+        '''
+        if i == len(prefix):
             return self.get_completion_suffix(parent)
-        char = suffix[i]
+
+        char = prefix[i]
         if char in parent.sub:
-            return self.get_completion_node(parent.sub[char], suffix, i + 1)
+            return self.get_completion_node(parent.sub[char], prefix, i + 1)
+
         return []
 
 
     def get_completion_suffix(self, parent):
+        '''
+        A recursive helper that gathers all the suffix of a
+        parent(prefix) node.
+
+        Inputs:
+            parent: (TrieNode) the current node
+
+        Returns:
+            (lst) A list of all suffixes from that parent node
+        '''
         if not parent.sub: 
             return ['']
 
@@ -114,6 +138,12 @@ class EnglishDictionary(object):
 
 class TrieNode(object):
     def __init__(self):
+        '''
+        Constructor
+        
+        Inputs: 
+            None
+        '''
         self.count = 0
         self.final = False
         self.sub = {}
@@ -139,8 +169,8 @@ class TrieNode(object):
             else:
                 t = self.sub[char]
             t._add_word_helper(word, i+1)
-        else:
 
+        else:
             self.final = True
 
         self.count += 1
@@ -166,11 +196,8 @@ class TrieNode(object):
             ret += node.__repr__()
         return ret
 
-    ### ADD ANY EXTRA METHODS HERE.
-
 
 if __name__ == "__main__":
-    #autocorrect_shell.go("english_dictionary")
+    autocorrect_shell.go("english_dictionary")
 
-    ed5 = EnglishDictionary("five")
-    print(ed5.get_completions("are"))
+    
