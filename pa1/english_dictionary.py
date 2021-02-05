@@ -15,6 +15,9 @@ from sys import exit
 
 import autocorrect_shell
 
+### GRADER COMMENT: Function and class definitions 
+###  should be separated by two blank lines
+### PENALTY: -2 points
 
 class EnglishDictionary(object):
     def __init__(self, wordfile):
@@ -43,6 +46,7 @@ class EnglishDictionary(object):
         '''
         return self.is_word_helper(w, self.words, 0)
     
+    ### GRADER COMMENT: multiple copies of traversal
     def is_word_helper(self, w, node, i):
         '''
         Recursive helper that determines whether a complete
@@ -77,7 +81,8 @@ class EnglishDictionary(object):
         '''
         return self.num_completions_r(self.words, prefix, 0)
 
-
+    ### GRADER COMMENT: multiple copies of traversal
+    ### PENALTY: -3 points
     def num_completions_r(self, trie, prefix, i):
         '''
         Recursive helper that gives the word count of a prefix
@@ -116,6 +121,15 @@ class EnglishDictionary(object):
         suffs = self.get_completion_node(self.words, prefix, 0)
         return [suff for suff in suffs if suff]
     
+    ### GRADER COMMENT: function name isn't descriptive, get_prefix is better
+    ### PENALTY: -2 points
+
+    ### GRADER COMMENT: using i for 0 check is confusing,
+    ###  it's better to just use 0
+    ### PENALTY: -2 points
+
+    ### GRADER COMMENT: does not handle case of no link
+    ### PENALTY: -2 points
     def get_completion_node(self, parent, prefix, i):
         '''
         A helper that recursively navigates the subtrie to get 
@@ -171,6 +185,10 @@ class TrieNode(object):
         '''
         self.count = 0
         self.final = False
+        ### GRADER COMMENT: Default parameter is set to {},
+        ###  doesn't make a new dictionary every time but 
+        ###  references the same dictionary instead
+        ### PENALTY: -2 points
         self.sub = {}
 
     def _add_word_helper(self, word, i): 
@@ -212,8 +230,9 @@ class TrieNode(object):
             None 
         '''
         self._add_word_helper(word, 0)
-        
-        
+  
+    ### GRADER COMMENT: Missing docstrings
+    ### PENALTY: -1 point  
     def __repr__(self):
         ret = ''
         for c, node in self.sub.items():
