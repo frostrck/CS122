@@ -17,7 +17,6 @@ import autocorrect_shell
 
 ### GRADER COMMENT: Function and class definitions 
 ###  should be separated by two blank lines
-### PENALTY: -2 points
 
 class EnglishDictionary(object):
     def __init__(self, wordfile):
