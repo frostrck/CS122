@@ -185,10 +185,6 @@ class TrieNode(object):
         '''
         self.count = 0
         self.final = False
-        ### GRADER COMMENT: Default parameter is set to {},
-        ###  doesn't make a new dictionary every time but 
-        ###  references the same dictionary instead
-        ### PENALTY: -2 points
         self.sub = {}
 
     def _add_word_helper(self, word, i): 

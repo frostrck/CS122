@@ -5,7 +5,7 @@ Points:
 
     - Code structure and style:
         Points Possible: 20
-        Points Obtained: 8
+        Points Obtained: 10
 
     - Create trie node:
         Points Possible: 3
@@ -31,7 +31,7 @@ Points:
         Points Possible: 16
         Points Obtained: 16
 
-Total Points: 79 / 100
+Total Points: 81 / 100
 
 Comments: >
     None
