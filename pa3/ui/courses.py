@@ -48,9 +48,15 @@ def find_courses(args_from_ui):
                     select.append("courses.title") 
                 if col == "dept":
                     where.append("courses.dept = ?")
+                    args.append(args_from_ui[col])
                 else:
-                    where.append("courses.terms = ?")
-                args.append(args_from_ui[col])
+                    # for word in args_from_ui[col]:
+                    #     counter = 0 
+                    #     table = "c" + str(counter)
+                    relations.append("catalog_index")
+                    args.append("catalog_index")
+                    on.append("courses.course_id = catalog_index.course_id")
+                    where.append("catalog_index.word LIKE ?")
                 continue
 
             if "meeting_patterns" not in relations:
@@ -94,19 +100,23 @@ def find_courses(args_from_ui):
                 else:
                     where.append("sections.enrollment <= ?")
                 args.append(args_from_ui[col])
-    
+            
     
     query = ("SELECT " + ", ".join(select) +
             " FROM " + " JOIN ".join(relations) +
             " ON " + " AND ".join(on) +
-            " WHERE " + " AND ".join(where))
+            " WHERE " + " AND ".join(where) + 
+            " COLLATE NOCASE")
 
+    print(query)
+    print(args)
     db = sqlite3.connect(DATABASE_FILENAME)
     c = db.cursor()
-    #c.execute(query, *args)
-
-    print(args)
-    return ([], [])
+    r = c.execute(query, args)
+    result = r.fetchall()
+    print(result)
+    db.close()
+    return None
 
 def build_relations(relations, where):
     '''
@@ -192,5 +202,4 @@ EXAMPLE_1 = {"dept": "CMSC",
              "terms": "computer science"}
 
 if __name__ == "__main__":
-    find_courses(EXAMPLE_0)
     find_courses(EXAMPLE_1)
