@@ -33,13 +33,92 @@ def find_courses(args_from_ui):
     containing query results.
     '''
 
-    # replace with a list of the attribute names in order and a list
-    # of query results.
+    select = ["courses.dept", "courses.course_num"]
+    relations = ["courses"]
+    where = []
+    columns = ["dept", "day", "time_start", "time_end", "walking_time", 
+            "enroll_lower", "enroll_upper", "building", "terms"]
+    args = [] 
+    on = []
+
+    for col in columns:
+        if col in args_from_ui:
+            if col == "dept" or col == "terms":
+                if "course_title" not in select:
+                    select.append("courses.title") 
+                if col == "dept":
+                    where.append("courses.dept = ?")
+                else:
+                    where.append("courses.terms = ?")
+                args.append(args_from_ui[col])
+                continue
+
+            if "meeting_patterns" not in relations:
+                relations.append("meeting_patterns") 
+                relations.append("sections")
+                on.append("courses.course_id = sections.course_id")
+                on.append("sections.meeting_pattern_id = meeting_patterns.meeting_pattern_id")
+
+            if "sections.section_num" not in select:
+                select.extend(["sections.section_num", "meeting_patterns.day", 
+                            "meeting_patterns.time_start", "meeting_patterns.time_end"])
+
+            if col == "day" or col == "time_start" or col == "time_end": 
+                if col == "day":
+                    days = []
+                    for day in args_from_ui[col]:
+                        days.append("meeting_patterns.day = ?")
+                        args.append(day)
+                    where.append(" AND ".join(days))
+                    continue
+                elif col == "time_start":
+                    where.append("meeting_patterns.time_start >= ?")
+                else:
+                    where.append("meeting_patterns.time_end <= ?")
+                args.append(args_from_ui[col])
+
+            # elif col == "walking_time" or col == "building":
+            #     relations.add("gps") 
+            #     relations.add("meeting_patterns") 
+            #     relations.add("sections") 
+
+            #     select.extend(["walking_time", "building"]])
+            #     if col == "walking_time":
+            #         where.append("")
+            #     else:
+            #         where.append("gps.building_code")
+            
+            elif col == "enroll_lower" or col == "enroll_upper": 
+                if col == "enroll_lower":
+                    where.append("sections.enrollment >= ?")
+                else:
+                    where.append("sections.enrollment <= ?")
+                args.append(args_from_ui[col])
+    
+    
+    query = ("SELECT " + ", ".join(select) +
+            " FROM " + " JOIN ".join(relations) +
+            " ON " + " AND ".join(on) +
+            " WHERE " + " AND ".join(where))
+
+    db = sqlite3.connect(DATABASE_FILENAME)
+    c = db.cursor()
+    #c.execute(query, *args)
+
+    print(args)
     return ([], [])
+
+def build_relations(relations, where):
+    '''
+    '''
+    relations = set("courses")
+
+
+
 
 
 ########### auxiliary functions #################
-########### do not change this code #############
+########### do not change this code ############
 
 def compute_time_between(lon1, lat1, lon2, lat2):
     '''
@@ -111,3 +190,7 @@ EXAMPLE_1 = {"dept": "CMSC",
              "time_end": 1500,
              "enroll_lower": 20,
              "terms": "computer science"}
+
+if __name__ == "__main__":
+    find_courses(EXAMPLE_0)
+    find_courses(EXAMPLE_1)
