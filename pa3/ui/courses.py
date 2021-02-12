@@ -399,9 +399,3 @@ EXAMPLE_3 = {
 
 EXAMPLE_4 = {"dept": "math"}
 
-if __name__ == "__main__":
-    '''
-    testing function
-    '''
-    print(find_courses(EXAMPLE_3))
-    print(find_courses(EXAMPLE_1))
