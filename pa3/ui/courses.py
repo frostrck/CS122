@@ -401,3 +401,7 @@ EXAMPLE_3 = {
             }
 
 EXAMPLE_4 = {"dept": "math"}
+
+if __name__ == "__main__":
+
+    print(find_courses(EX))
