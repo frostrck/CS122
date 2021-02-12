@@ -269,18 +269,18 @@ def construct_query(select, relations, on, where):
         query: (str) the string of SQL query
     '''
 
-    if on == [] or where == []:
-        if where == []:
+    if where == []:
             query = ("SELECT " + ", ".join(select) +
                 " FROM " + " JOIN ".join(relations) +
                 " ON " + " AND ".join(on) +
                 " COLLATE NOCASE")
-            if on == []:
-                query = ("SELECT " + ", ".join(select) +
-                    " FROM " + " JOIN ".join(relations) +
-                    " WHERE " + " AND ".join(where) + 
-                    " COLLATE NOCASE")
-                
+        
+    if on == []:
+        query = ("SELECT " + ", ".join(select) +
+            " FROM " + " JOIN ".join(relations) +
+            " WHERE " + " AND ".join(where) + 
+            " COLLATE NOCASE")
+
     else:
         query = ("SELECT " + ", ".join(select) +
             " FROM " + " JOIN ".join(relations) +
@@ -403,5 +403,7 @@ EXAMPLE_3 = {
 EXAMPLE_4 = {"dept": "math"}
 
 if __name__ == "__main__":
-
-    print(find_courses(EX))
+    '''
+    testing function
+    '''
+    print(find_courses(EXAMPLE_4))
