@@ -12,13 +12,90 @@ DATA_DIR = os.path.dirname(__file__)
 DATABASE_FILENAME = os.path.join(DATA_DIR, 'course-info.db')
 
 
-def process_dept_terms(key, value, on, select, where, args, relations):
+def find_courses(args_from_ui):
+    '''
+    Takes a dictionary containing search criteria and returns courses
+    that match the criteria.  The dictionary will contain some of the
+    following fields:
+
+      - dept a string
+      - day a list with variable number of elements
+           -> ["'MWF'", "'TR'", etc.]
+      - time_start an integer in the range 0-2359
+      - time_end an integer in the range 0-2359
+      - walking_time an integer
+      - enroll_lower an integer
+      - enroll_upper an integer
+      - building a string
+      - terms a string: "quantum plato"
+
+    Returns a pair: list of attribute names in order and a list
+    containing query results.
+    '''
+
+    db = sqlite3.connect(DATABASE_FILENAME)
+    c = db.cursor()
+
+    columns = ["dept", "day", "time_start", "time_end", "building", "walking_time", 
+                "enroll_lower", "enroll_upper", "terms"]
+    select = ["courses.dept", "courses.course_num"]
+    relations = ["courses"]
+    where = []
+    args = [] 
+    on = []
+
+    for col in columns:
+        if col in args_from_ui:
+            value = args_from_ui[col]
+            if col == "dept" or col == "terms":
+                process_dept_terms(col, value, on, select, where, args, relations)
+                continue
+
+            if "meeting_patterns" not in relations:
+                process_relations(relations, on)
+
+            if "sections.section_num" not in select:
+                select.extend(["sections.section_num", "meeting_patterns.day", 
+                            "meeting_patterns.time_start", "meeting_patterns.time_end"])
+
+            if col == "day" or col == "time_start" or col == "time_end": 
+                if col == "day":
+                    process_day(col, value, args, where)
+                    continue
+                process_time(col, value, where)
+                args.append(value)
+
+            elif col == "building":
+                db.create_function("time_between", 4, compute_time_between)
+                building = args_from_ui["building"]
+                time = args_from_ui["walking_time"]
+                build_distance_query(time, value, select, where, args, on)
+                relations.append("(gps AS a JOIN gps AS b)")
+            
+            elif col == "enroll_lower" or col == "enroll_upper":
+                process_enroll(col, value, args, select, where)
+    
+    query = construct_query(select, relations, on, where)
+    print(query)
+    r = c.execute(query, args)
+    result = r.fetchall()
+    db.close()
+    header = get_header(c)
+
+    if len(result) == 0:
+        header = []
+
+    return(header, result)
+
+
+
+def process_dept_terms(col, value, on, select, where, args, relations):
     '''
     Appends clauses to relevant lists for query if "dept" 
     or "terms" are present in the dictionary
 
     Inputs:
-        key: (str) the key ("dept" or "terms)
+        col: (str) the key ("dept" or "terms)
         value: (str) the value of associated key
         on: (lst) elements for the ON clause of the query
         select: (lst) elements for the SELECT clause of the query
@@ -30,9 +107,11 @@ def process_dept_terms(key, value, on, select, where, args, relations):
         None
     '''
 
+
     if "course_title" not in select:
         select.append("courses.title") 
-    if key == "dept":
+
+    if col == "dept":
         where.append("courses.dept = ?")
         args.append(value)
     else:
@@ -55,7 +134,6 @@ def build_terms_query(args, s, where, on):
         None
     '''
 
-    on.append("courses.course_id = catalog_index.course_id")
     words = s.split()
     base_relation = "catalog_index"
 
@@ -85,35 +163,6 @@ def build_terms_query(args, s, where, on):
         return base_relation
 
 
-def process_day_time(key, value, args, where):
-    '''
-    Appends clauses to relevant lists for query if the keys
-    "day", "time_start" or "time_end" are present in the dictionary
-
-    Inputs:
-        key: (str) the key from args_from_ui
-        value: (lst or int) the value associated with the key entry
-        args: (lst) variables used when constructing the query
-        where: (lst) elements for the WHERE clause of the query
-
-    Returns:
-        None
-    '''
-
-    if key == "day":
-        days = []
-        for day in value:
-            days.append("meeting_patterns.day = ?")
-            args.append(day)
-        where.append(" AND ".join(days))
-
-    elif key == "time_start":
-        where.append("meeting_patterns.time_start >= ?")
-    else:
-        where.append("meeting_patterns.time_end <= ?")
-    args.append(value)
-
-
 def process_day(col, value, args, where):
     '''
     Process the clause lists if the dict key is 
@@ -136,13 +185,14 @@ def process_day(col, value, args, where):
     where.append(" AND ".join(days))
 
 
-def process_time(col, where):
+def process_time(col, value, where):
     '''
     Processes the necessary lists if the dict key is 
     "time_start" or "time_end"
 
     Inputs:
         col: (str) the dictionary key
+        value: (int) the start/end time
         where: (lst) the list for WHERE clause
     
     Returns:
@@ -153,7 +203,7 @@ def process_time(col, where):
         where.append("meeting_patterns.time_start >= ?")
     else:
         where.append("meeting_patterns.time_end <= ?")
-    args.append(args_from_ui[col])
+
 
 def process_relations(relations, on):
     '''
@@ -175,8 +225,6 @@ def process_relations(relations, on):
     on.append("sections.meeting_pattern_id = meeting_patterns.meeting_pattern_id")
 
 
-
-
 def process_enroll(col, value, args, select, where):
     '''
     Processes the necessary lists if the dict key is 
@@ -192,6 +240,7 @@ def process_enroll(col, value, args, select, where):
     Returns
         None
     '''
+
     select.append("sections.enrollment")
     if col == "enroll_lower":
         where.append("sections.enrollment >= ?")
@@ -213,8 +262,14 @@ def construct_query(select, relations, on, where):
     Returns:
         query: (str) the string of SQL query
     '''
-    
-    query = ("SELECT " + ", ".join(select) +
+    if on == []:
+        query = ("SELECT " + ", ".join(select) +
+            " FROM " + relations[0] +
+            " WHERE " + " AND ".join(where) + 
+            " COLLATE NOCASE")
+
+    else:
+        query = ("SELECT " + ", ".join(select) +
             " FROM " + " JOIN ".join(relations) +
             " ON " + " AND ".join(on) +
             " WHERE " + " AND ".join(where) + 
@@ -246,85 +301,8 @@ def build_distance_query(time, building, select, where, args, on):
     args.append(time)
     args.append(building)
 
-    
 
 
-
-def find_courses(args_from_ui):
-    '''
-    Takes a dictionary containing search criteria and returns courses
-    that match the criteria.  The dictionary will contain some of the
-    following fields:
-
-      - dept a string
-      - day a list with variable number of elements
-           -> ["'MWF'", "'TR'", etc.]
-      - time_start an integer in the range 0-2359
-      - time_end an integer in the range 0-2359
-      - walking_time an integer
-      - enroll_lower an integer
-      - enroll_upper an integer
-      - building a string
-      - terms a string: "quantum plato"
-
-    Returns a pair: list of attribute names in order and a list
-    containing query results.
-    '''
-
-    db = sqlite3.connect(DATABASE_FILENAME)
-    c = db.cursor()
-
-    
-    columns = ["dept", "day", "time_start", "time_end", "building", "walking_time", 
-            "enroll_lower", "enroll_upper", "terms"]
-    select = ["courses.dept", "courses.course_num"]
-    relations = ["courses"]
-    where = []
-    args = [] 
-    on = []
-
-    for col in columns:
-        if col in args_from_ui:
-            value = args_from_ui[col]
-            if col == "dept" or col == "terms":
-                process_dept_terms(col, value, on, select, where, args, relations)
-                continue
-
-            if "meeting_patterns" not in relations:
-                process_relations(relations, on)
-
-            if "sections.section_num" not in select:
-                select.extend(["sections.section_num", "meeting_patterns.day", 
-                            "meeting_patterns.time_start", "meeting_patterns.time_end"])
-
-            if col == "day" or col == "time_start" or col == "time_end": 
-                if col == "day":
-                    process_day(col, value, args, where)
-                    continue
-                process_time(col, where)
-                args.append(args_from_ui[col])
-
-            elif col == "building":
-                db.create_function("time_between", 4, compute_time_between)
-                building = args_from_ui["building"]
-                time = args_from_ui["walking_time"]
-                build_distance_query(time, value, select, where, args, on)
-                relations.append("(gps AS a JOIN gps AS b)")
-            
-            elif col == "enroll_lower" or col == "enroll_upper":
-                process_enroll(col, value, args, select, where)
-    
-    query = construct_query(select, relations, on, where)
-
-    r = c.execute(query, args)
-    result = r.fetchall()
-    db.close()
-    header = get_header(c)
-
-    if len(result) == 0:
-        header = []
-
-    return (header, result)
 
 
 
@@ -396,6 +374,7 @@ EXAMPLE_0 = {"time_start": 930,
              "time_end": 1500,
              "day": ["MWF"]}
 
+DAD = {"dept": "cmsc"}
 
 EXAMPLE_1 = {"dept": "CMSC",
              "day": ["MWF", "TR"],
@@ -405,14 +384,9 @@ EXAMPLE_1 = {"dept": "CMSC",
              "terms": "computer science"}
 
 
-EX_2 = {
-  "terms": "mathematics",
-  "day": ["MWF"],
-  "building": "RY",
-  "walking_time":0,
-  "enroll_lower": 20
-}
 
 if __name__ == "__main__":
-    print(find_courses(EX_2))
-    # find_courses(EXAMPLE_1)
+    print(find_courses(DAD))
+
+
+# CASES TO SOLVE: 1. Just dept leads to empty ON; 2. Multiple "day" options lead to empty output
