@@ -11,8 +11,243 @@ import os
 DATA_DIR = os.path.dirname(__file__)
 DATABASE_FILENAME = os.path.join(DATA_DIR, 'course-info.db')
 
-columns = ["dept", "day", "time_start", "time_end", "building", "walking_time", 
-            "enroll_lower", "enroll_upper", "terms"]
+
+def process_dept_terms(key, value, on, select, where, args, relations):
+    '''
+    Appends clauses to relevant lists for query if "dept" 
+    or "terms" are present in the dictionary
+
+    Inputs:
+        key: (str) the key ("dept" or "terms)
+        value: (str) the value of associated key
+        on: (lst) elements for the ON clause of the query
+        select: (lst) elements for the SELECT clause of the query
+        where: (lst) elements for the WHERE clause of the query
+        args: (lst) variables used when constructing the query
+        relations: (lst) elements for the JOIN clause of the query
+    
+    Returns:
+        None
+    '''
+
+    if "course_title" not in select:
+        select.append("courses.title") 
+    if key == "dept":
+        where.append("courses.dept = ?")
+        args.append(value)
+    else:
+        relations.append(build_terms_query(args, value, where, on))
+
+
+def build_terms_query(args, s, where, on):
+    '''
+    A helper function that builds the components
+    for the query if the key "terms" is present in
+    the input dictionary
+
+    Inputs:
+        args: (lst) variables used when constructing the query
+        s: (str) the string of terms
+        where: (lst) elements for the WHERE clause of the query
+        on: (lst) elements for the ON clause of the query
+
+    Returns:
+        None
+    '''
+
+    on.append("courses.course_id = catalog_index.course_id")
+    words = s.split()
+    base_relation = "catalog_index"
+
+    if len(words) > 1:
+        args.insert(0, words[0])
+        words = words[1:]
+        relations = [base_relation]
+        on = []
+        terms = ["catalog_index.word=?"]
+        counter = 0
+
+        for word in words: 
+            alias = "c" + str(counter)
+            relation_alias = base_relation + " " + alias
+            relations.append(relation_alias)
+            on.append("catalog_index.course_id = " + alias + ".course_id")
+            terms.append(alias+".word=?")
+            args.insert(0, word)
+            counter += 1
+
+        query = "(" + " JOIN ".join(relations) + " ON " + " AND ".join(on) + " AND (" + " AND ".join(terms) + "))"
+        return query
+
+    else:
+        args.append(words[0])
+        where.append("catalog_index.word=?")
+        return base_relation
+
+
+def process_day_time(key, value, args, where):
+    '''
+    Appends clauses to relevant lists for query if the keys
+    "day", "time_start" or "time_end" are present in the dictionary
+
+    Inputs:
+        key: (str) the key from args_from_ui
+        value: (lst or int) the value associated with the key entry
+        args: (lst) variables used when constructing the query
+        where: (lst) elements for the WHERE clause of the query
+
+    Returns:
+        None
+    '''
+
+    if key == "day":
+        days = []
+        for day in value:
+            days.append("meeting_patterns.day = ?")
+            args.append(day)
+        where.append(" AND ".join(days))
+
+    elif key == "time_start":
+        where.append("meeting_patterns.time_start >= ?")
+    else:
+        where.append("meeting_patterns.time_end <= ?")
+    args.append(value)
+
+
+def process_day(col, value, args, where):
+    '''
+    Process the clause lists if the dict key is 
+    “day".
+
+    Inputs:
+        col: (str) dict key "day"
+        value: (list) value associated with the key "day"
+        args: (lst) variables used when constructing the query
+        where: (lst) elements for the WHERE clause of the query
+
+    Returns:
+        None
+    '''
+
+    days = []
+    for day in value:
+        days.append("meeting_patterns.day = ?")
+        args.append(day)
+    where.append(" AND ".join(days))
+
+
+def process_time(col, where):
+    '''
+    Processes the necessary lists if the dict key is 
+    "time_start" or "time_end"
+
+    Inputs:
+        col: (str) the dictionary key
+        where: (lst) the list for WHERE clause
+    
+    Returns:
+        None
+    '''
+
+    if col == "time_start":
+        where.append("meeting_patterns.time_start >= ?")
+    else:
+        where.append("meeting_patterns.time_end <= ?")
+    args.append(args_from_ui[col])
+
+def process_relations(relations, on):
+    '''
+    Takes in a "join" and "on" clauses lists and appends necessary
+    tables and IDs beyond keys beyond "terms" and "dept" is present
+    in args_from_ui
+
+    Input:
+        relations: list that will be used in the JOIN clause
+        on: list that will be used in the ON clause
+    
+    Returns: 
+        None
+    '''
+
+    relations.append("meeting_patterns") 
+    relations.append("sections")
+    on.append("courses.course_id = sections.course_id")
+    on.append("sections.meeting_pattern_id = meeting_patterns.meeting_pattern_id")
+
+
+
+
+def process_enroll(col, value, args, select, where):
+    '''
+    Processes the necessary lists if the dict key is 
+    "enroll_lower" or "enroll_upper"
+
+    Inputs:
+        col: (str) the key of the form "enroll____"
+        value: (int) value associated with enroll
+        args: (lst) variables used when constructing the query
+        select: (lst) elements for the SELECT clause of the query
+        where: (lst) elements for the WHERE clause of the query
+
+    Returns
+        None
+    '''
+    select.append("sections.enrollment")
+    if col == "enroll_lower":
+        where.append("sections.enrollment >= ?")
+    else:
+        where.append("sections.enrollment <= ?")
+    args.append(value)
+
+
+def construct_query(select, relations, on, where):
+    '''
+    Constructs the final query for execution
+
+    Inputs:
+        select: (lst) elements for the SELECT clause of the query
+        where: (lst) elements for the WHERE clause of the query
+        relations: (lst) elements for the JOIN clause of the query
+        on: (lst) elements for the ON clause of the query
+
+    Returns:
+        query: (str) the string of SQL query
+    '''
+    
+    query = ("SELECT " + ", ".join(select) +
+            " FROM " + " JOIN ".join(relations) +
+            " ON " + " AND ".join(on) +
+            " WHERE " + " AND ".join(where) + 
+            " COLLATE NOCASE")
+    return query
+
+
+def build_distance_query(time, building, select, where, args, on):
+    '''
+    Constructs a query that checks the walking time/distance
+    between buildings.
+
+    Inputs:
+        time: (str) the acceptable time of walking between two buildings
+        building: (str) the building of origin
+        select: (lst) elements for the SELECT clause of the query
+        where: (lst) elements for the WHERE clause of the query
+        on: (lst) elements for the ON clause of the query
+        args: (lst) variables used when constructing the query
+
+    Returns:
+        None
+    '''
+
+    on.append("sections.building_code = a.building_code")
+    select.extend(["a.building_code", "time_between(a.lon, a.lat, b.lon, b.lat) AS walking_time"])
+    where.append("walking_time <= ?")
+    where.append("b.building_code=?")
+    args.append(time)
+    args.append(building)
+
+    
+
 
 
 def find_courses(args_from_ui):
@@ -39,6 +274,9 @@ def find_courses(args_from_ui):
     db = sqlite3.connect(DATABASE_FILENAME)
     c = db.cursor()
 
+    
+    columns = ["dept", "day", "time_start", "time_end", "building", "walking_time", 
+            "enroll_lower", "enroll_upper", "terms"]
     select = ["courses.dept", "courses.course_num"]
     relations = ["courses"]
     where = []
@@ -47,22 +285,13 @@ def find_courses(args_from_ui):
 
     for col in columns:
         if col in args_from_ui:
+            value = args_from_ui[col]
             if col == "dept" or col == "terms":
-                if "course_title" not in select:
-                    select.append("courses.title") 
-                if col == "dept":
-                    where.append("courses.dept = ?")
-                    args.append(args_from_ui[col])
-                else:
-                    
-                    relations.append(build_term_query(args, args_from_ui[col], where, on))
+                process_dept_terms(col, value, on, select, where, args, relations)
                 continue
 
             if "meeting_patterns" not in relations:
-                relations.append("meeting_patterns") 
-                relations.append("sections")
-                on.append("courses.course_id = sections.course_id")
-                on.append("sections.meeting_pattern_id = meeting_patterns.meeting_pattern_id")
+                process_relations(relations, on)
 
             if "sections.section_num" not in select:
                 select.extend(["sections.section_num", "meeting_patterns.day", 
@@ -70,87 +299,34 @@ def find_courses(args_from_ui):
 
             if col == "day" or col == "time_start" or col == "time_end": 
                 if col == "day":
-                    days = []
-                    for day in args_from_ui[col]:
-                        days.append("meeting_patterns.day = ?")
-                        args.append(day)
-                    where.append(" AND ".join(days))
+                    process_day(col, value, args, where)
                     continue
-                elif col == "time_start":
-                    where.append("meeting_patterns.time_start >= ?")
-                else:
-                    where.append("meeting_patterns.time_end <= ?")
+                process_time(col, where)
                 args.append(args_from_ui[col])
 
             elif col == "building":
                 db.create_function("time_between", 4, compute_time_between)
                 building = args_from_ui["building"]
                 time = args_from_ui["walking_time"]
-                relations.append(build_distance_query(time, building, select, where, args, on))
+                build_distance_query(time, value, select, where, args, on)
+                relations.append("(gps AS a JOIN gps AS b)")
             
             elif col == "enroll_lower" or col == "enroll_upper":
-                select.append("sections.enrollment")
-                if col == "enroll_lower":
-                    where.append("sections.enrollment >= ?")
-                else:
-                    where.append("sections.enrollment <= ?")
-                args.append(args_from_ui[col])
-            
+                process_enroll(col, value, args, select, where)
     
-    query = ("SELECT " + ", ".join(select) +
-            " FROM " + " JOIN ".join(relations) +
-            " ON " + " AND ".join(on) +
-            " WHERE " + " AND ".join(where) + 
-            " COLLATE NOCASE")
+    query = construct_query(select, relations, on, where)
+
     r = c.execute(query, args)
     result = r.fetchall()
     db.close()
-    butts = get_header(c)
+    header = get_header(c)
+
     if len(result) == 0:
-        butts = []
-    return (butts, result)
+        header = []
 
-def build_distance_query(time, building, select, where, args, on):
-    # SELECT a.building_code, b.building_code, time_between(a.lon, a.lat, b.lon, b.lat) AS walking_time
-    # FROM gps AS a JOIN gps AS b
-    # WHERE a.building_code < b.building_code
-    on.append("sections.building_code = a.building_code")
-    select.extend(["a.building_code", "time_between(a.lon, a.lat, b.lon, b.lat) AS walking_time"])
-    where.append("walking_time <= ?")
-    where.append("b.building_code=?")
-    args.append(time)
-    args.append(building)
-    return "(gps AS a JOIN gps AS b)"
-    
+    return (header, result)
 
 
-def build_term_query(args, s, where, on):
-    # select * from courses join (catalog_index join catalog_index c2 join catalog_index c3 on catalog_index.course_id=c2.course_id and catalog_index.course_id=c3.course_id
-    # and (catalog_index.word="computer" and c2.word="science" and c3.word="bio")) on courses.course_id=catalog_index.course_id where courses.dept="CMSC";
-    on.append("courses.course_id = catalog_index.course_id")
-    words = s.split()
-    base_relation = "catalog_index"
-    if len(words) > 1:
-        args.insert(0, words[0])
-        words = words[1:]
-        relations = [base_relation]
-        on = []
-        terms = ["catalog_index.word=?"]
-        counter = 0
-        for word in words: 
-            alias = "c" + str(counter)
-            relation_alias = base_relation + " " + alias
-            relations.append(relation_alias)
-            on.append("catalog_index.course_id = " + alias + ".course_id")
-            terms.append(alias+".word=?")
-            args.insert(0, word)
-            counter += 1
-        query = "(" + " JOIN ".join(relations) + " ON " + " AND ".join(on) + " AND (" + " AND ".join(terms) + "))"
-        return query
-    else:
-        args.append(words[0])
-        where.append("catalog_index.word=?")
-        return base_relation
 
 
 ########### auxiliary functions #################
@@ -220,13 +396,6 @@ EXAMPLE_0 = {"time_start": 930,
              "time_end": 1500,
              "day": ["MWF"]}
 
-DAD = {
-  "terms": "mathematics",
-  "day": ["MWF"],
-  "building": "RY",
-  "walking_time":0,
-  "enroll_lower": 20
-}
 
 EXAMPLE_1 = {"dept": "CMSC",
              "day": ["MWF", "TR"],
@@ -235,6 +404,15 @@ EXAMPLE_1 = {"dept": "CMSC",
              "enroll_lower": 20,
              "terms": "computer science"}
 
+
+EX_2 = {
+  "terms": "mathematics",
+  "day": ["MWF"],
+  "building": "RY",
+  "walking_time":0,
+  "enroll_lower": 20
+}
+
 if __name__ == "__main__":
-    print(find_courses(DAD))
+    print(find_courses(EX_2))
     # find_courses(EXAMPLE_1)
