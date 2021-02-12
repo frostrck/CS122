@@ -269,17 +269,18 @@ def construct_query(select, relations, on, where):
         query: (str) the string of SQL query
     '''
 
-    if where == []:
+    if where == [] or on == []:
+        if where == []:
+            query = ("SELECT " + ", ".join(select) +
+                    " FROM " + " JOIN ".join(relations) +
+                    " ON " + " AND ".join(on) +
+                    " COLLATE NOCASE")
+            
+        if on == []:
             query = ("SELECT " + ", ".join(select) +
                 " FROM " + " JOIN ".join(relations) +
-                " ON " + " AND ".join(on) +
+                " WHERE " + " AND ".join(where) + 
                 " COLLATE NOCASE")
-        
-    if on == []:
-        query = ("SELECT " + ", ".join(select) +
-            " FROM " + " JOIN ".join(relations) +
-            " WHERE " + " AND ".join(where) + 
-            " COLLATE NOCASE")
 
     else:
         query = ("SELECT " + ", ".join(select) +
@@ -382,22 +383,18 @@ def clean_header(s):
 ########### some sample inputs #################
 
 
-EXAMPLE_0 = {"terms": "computer science", "dept": "cmsc"}
+EXAMPLE_0 = {"terms": "computer science"}
 
-EX = {"day": ["M", "T"], "building": "RY", "walking_time": 10}
+EXAMPLE_2 = {"day": ["M", "T"], "building": "RY", "walking_time": 10}
 
-EXAMPLE_1 = {"dept": "CMSC",
-             "day": ["MWF"],
-             "time_start": 1030,
-             "time_end": 1500,
-             "enroll_lower": 20,
-             "terms": "computer science economics"}
+EXAMPLE_1 = {"dept": "math",
+             "terms" : "differential calculus"}
 
 EXAMPLE_3 = {
             "terms": "science mathematics economics",
             "day": ["MWF"],
-            "time_start": 900,
-            "time_end": 1500
+            "building": "RY",
+            "walking_time": 1
             }
 
 EXAMPLE_4 = {"dept": "math"}
@@ -406,4 +403,5 @@ if __name__ == "__main__":
     '''
     testing function
     '''
-    print(find_courses(EXAMPLE_4))
+    print(find_courses(EXAMPLE_3))
+    print(find_courses(EXAMPLE_1))
