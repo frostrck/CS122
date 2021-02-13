@@ -1,6 +1,6 @@
 ### CS122, Winter 2021: Course search engine: search
 ###
-### Your name(s)
+### Corry Ke
 
 from math import radians, cos, sin, asin, sqrt
 import sqlite3
@@ -76,7 +76,7 @@ def find_courses(args_from_ui):
                 process_enroll(col, value, args, select, where)
     
     query = construct_query(select, relations, on, where)
-    print(query)
+
     r = c.execute(query, args)
     result = r.fetchall()
     db.close()
@@ -86,7 +86,6 @@ def find_courses(args_from_ui):
         header = []
 
     return(header, result)
-
 
 
 def process_dept_terms(col, value, on, select, where, args, relations):
@@ -107,14 +106,14 @@ def process_dept_terms(col, value, on, select, where, args, relations):
         None
     '''
 
-
-    if "course_title" not in select:
+    if "courses.title" not in select:
         select.append("courses.title") 
 
     if col == "dept":
         where.append("courses.dept = ?")
         args.append(value)
     else:
+        on.append("courses.course_id = catalog_index.course_id")
         relations.append(build_terms_query(args, value, where, on))
 
 
@@ -142,7 +141,7 @@ def build_terms_query(args, s, where, on):
         words = words[1:]
         relations = [base_relation]
         on = []
-        terms = ["catalog_index.word=?"]
+        terms = ["catalog_index.word = ?"]
         counter = 0
 
         for word in words: 
@@ -159,7 +158,7 @@ def build_terms_query(args, s, where, on):
 
     else:
         args.append(words[0])
-        where.append("catalog_index.word=?")
+        where.append("catalog_index.word = ?")
         return base_relation
 
 
@@ -178,11 +177,18 @@ def process_day(col, value, args, where):
         None
     '''
 
-    days = []
-    for day in value:
-        days.append("meeting_patterns.day = ?")
-        args.append(day)
-    where.append(" AND ".join(days))
+    if len(value) == 1:
+        args.append(value[0])
+        where.append("meeting_patterns.day = ?")
+
+    else:
+        days = tuple(value)
+        terms = "( ?"
+        args.append(value[0])
+        for val in value[1:]:
+            terms = terms + ", ?"
+            args.append(val)
+        where.append("meeting_patterns.day IN " +  terms + ")")
 
 
 def process_time(col, value, where):
@@ -262,11 +268,19 @@ def construct_query(select, relations, on, where):
     Returns:
         query: (str) the string of SQL query
     '''
-    if on == []:
-        query = ("SELECT " + ", ".join(select) +
-            " FROM " + relations[0] +
-            " WHERE " + " AND ".join(where) + 
-            " COLLATE NOCASE")
+
+    if where == [] or on == []:
+        if where == []:
+            query = ("SELECT " + ", ".join(select) +
+                    " FROM " + " JOIN ".join(relations) +
+                    " ON " + " AND ".join(on) +
+                    " COLLATE NOCASE")
+            
+        if on == []:
+            query = ("SELECT " + ", ".join(select) +
+                " FROM " + " JOIN ".join(relations) +
+                " WHERE " + " AND ".join(where) + 
+                " COLLATE NOCASE")
 
     else:
         query = ("SELECT " + ", ".join(select) +
@@ -274,6 +288,7 @@ def construct_query(select, relations, on, where):
             " ON " + " AND ".join(on) +
             " WHERE " + " AND ".join(where) + 
             " COLLATE NOCASE")
+
     return query
 
 
@@ -297,12 +312,9 @@ def build_distance_query(time, building, select, where, args, on):
     on.append("sections.building_code = a.building_code")
     select.extend(["a.building_code", "time_between(a.lon, a.lat, b.lon, b.lat) AS walking_time"])
     where.append("walking_time <= ?")
-    where.append("b.building_code=?")
+    where.append("b.building_code = ?")
     args.append(time)
     args.append(building)
-
-
-
 
 
 
@@ -370,23 +382,19 @@ def clean_header(s):
 
 ########### some sample inputs #################
 
-EXAMPLE_0 = {"time_start": 930,
-             "time_end": 1500,
-             "day": ["MWF"]}
 
-DAD = {"dept": "cmsc"}
+EXAMPLE_0 = {"terms": "computer science"}
 
-EXAMPLE_1 = {"dept": "CMSC",
-             "day": ["MWF", "TR"],
-             "time_start": 1030,
-             "time_end": 1500,
-             "enroll_lower": 20,
-             "terms": "computer science"}
+EXAMPLE_2 = {"day": ["M", "T"], "building": "RY", "walking_time": 10}
 
+EXAMPLE_1 = {"dept": "math",
+             "terms" : "differential calculus"}
 
+EXAMPLE_3 = {
+            "terms": "science mathematics economics",
+            "day": ["MWF"],
+            "building": "RY",
+            "walking_time": 1
+            }
 
-if __name__ == "__main__":
-    print(find_courses(DAD))
-
-
-# CASES TO SOLVE: 1. Just dept leads to empty ON; 2. Multiple "day" options lead to empty output
+EXAMPLE_4 = {"dept": "math"}
