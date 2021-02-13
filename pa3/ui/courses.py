@@ -47,6 +47,7 @@ def find_courses(args_from_ui):
     for col in columns:
         if col in args_from_ui:
             value = args_from_ui[col]
+            
             if col == "dept" or col == "terms":
                 process_dept_terms(col, value, on, select, where, args, relations)
                 continue
@@ -74,8 +75,12 @@ def find_courses(args_from_ui):
             
             elif col == "enroll_lower" or col == "enroll_upper":
                 process_enroll(col, value, args, select, where)
-    
+
+    if "dept" in args_from_ui or "terms" in args_from_ui:
+        select.append("courses.title")
+
     query = construct_query(select, relations, on, where)
+    print(query, args)
 
     r = c.execute(query, args)
     result = r.fetchall()
@@ -105,9 +110,6 @@ def process_dept_terms(col, value, on, select, where, args, relations):
     Returns:
         None
     '''
-
-    if "courses.title" not in select:
-        select.append("courses.title") 
 
     if col == "dept":
         where.append("courses.dept = ?")
@@ -183,7 +185,7 @@ def process_day(col, value, args, where):
 
     else:
         days = tuple(value)
-        terms = "( ?"
+        terms = "(?"
         args.append(value[0])
         for val in value[1:]:
             terms = terms + ", ?"
@@ -279,14 +281,14 @@ def construct_query(select, relations, on, where):
         if on == []:
             query = ("SELECT " + ", ".join(select) +
                 " FROM " + " JOIN ".join(relations) +
-                " WHERE " + " AND ".join(where) + 
+                " WHERE " + " COLLATE NOCASE AND ".join(where) + 
                 " COLLATE NOCASE")
 
     else:
         query = ("SELECT " + ", ".join(select) +
             " FROM " + " JOIN ".join(relations) +
             " ON " + " AND ".join(on) +
-            " WHERE " + " AND ".join(where) + 
+            " WHERE " + " COLLATE NOCASE AND ".join(where) + 
             " COLLATE NOCASE")
 
     return query
@@ -383,18 +385,19 @@ def clean_header(s):
 ########### some sample inputs #################
 
 
-EXAMPLE_0 = {"terms": "computer science"}
+EXAMPLE_0 = {"terms": "calculus"}
 
-EXAMPLE_2 = {"day": ["M", "T"], "building": "RY", "walking_time": 10}
+EXAMPLE_1 = {"dept": "MATH",
+             "terms": "algebra"}
 
-EXAMPLE_1 = {"dept": "math",
-             "terms" : "differential calculus"}
+EXAMPLE_2 = {"day": ["M", "T"], "building": "RY", "walking_time": 2}
 
-EXAMPLE_3 = {
-            "terms": "science mathematics economics",
-            "day": ["MWF"],
-            "building": "RY",
-            "walking_time": 1
+EXAMPLE_3 = {"dept": "math",
+            "terms": "calculus",
             }
 
-EXAMPLE_4 = {"dept": "math"}
+EXAMPLE_4 = {"dept": "CMSC",
+             "terms" : "CALCULUS"}
+
+EXAMPLE_5 = {"dept": "math", "day": ["TR"]}
+
