@@ -36,18 +36,18 @@ def find_courses(args_from_ui):
     db = sqlite3.connect(DATABASE_FILENAME)
     c = db.cursor()
 
-    columns = ["dept", "day", "time_start", "time_end", "building", "walking_time", 
+    columns = ["dept", "day", "time_start", "time_end", "building", "walking_time",
                 "enroll_lower", "enroll_upper", "terms"]
     select = ["courses.dept", "courses.course_num"]
     relations = ["courses"]
     where = []
-    args = [] 
+    args = []
     on = []
 
     for col in columns:
         if col in args_from_ui:
             value = args_from_ui[col]
-            
+
             if col == "dept" or col == "terms":
                 process_dept_terms(col, value, on, select, where, args, relations)
                 continue
@@ -56,10 +56,10 @@ def find_courses(args_from_ui):
                 process_relations(relations, on)
 
             if "sections.section_num" not in select:
-                select.extend(["sections.section_num", "meeting_patterns.day", 
+                select.extend(["sections.section_num", "meeting_patterns.day",
                             "meeting_patterns.time_start", "meeting_patterns.time_end"])
 
-            if col == "day" or col == "time_start" or col == "time_end": 
+            if col == "day" or col == "time_start" or col == "time_end":
                 if col == "day":
                     process_day(col, value, args, where)
                     continue
@@ -72,7 +72,7 @@ def find_courses(args_from_ui):
                 time = args_from_ui["walking_time"]
                 build_distance_query(time, value, select, where, args, on)
                 relations.append("(gps AS a JOIN gps AS b)")
-            
+
             elif col == "enroll_lower" or col == "enroll_upper":
                 process_enroll(col, value, args, select, where)
 
@@ -81,6 +81,9 @@ def find_courses(args_from_ui):
 
     query = construct_query(select, relations, on, where)
     print(query, args)
+    ### GRADER COMMENT
+    # Please comment out print statements in the future.
+    # Penalty: style -1
 
     r = c.execute(query, args)
     result = r.fetchall()
@@ -95,7 +98,7 @@ def find_courses(args_from_ui):
 
 def process_dept_terms(col, value, on, select, where, args, relations):
     '''
-    Appends clauses to relevant lists for query if "dept" 
+    Appends clauses to relevant lists for query if "dept"
     or "terms" are present in the dictionary
 
     Inputs:
@@ -106,7 +109,7 @@ def process_dept_terms(col, value, on, select, where, args, relations):
         where: (lst) elements for the WHERE clause of the query
         args: (lst) variables used when constructing the query
         relations: (lst) elements for the JOIN clause of the query
-    
+
     Returns:
         None
     '''
@@ -146,7 +149,7 @@ def build_terms_query(args, s, where, on):
         terms = ["catalog_index.word = ?"]
         counter = 0
 
-        for word in words: 
+        for word in words:
             alias = "c" + str(counter)
             relation_alias = base_relation + " " + alias
             relations.append(relation_alias)
@@ -166,7 +169,7 @@ def build_terms_query(args, s, where, on):
 
 def process_day(col, value, args, where):
     '''
-    Process the clause lists if the dict key is 
+    Process the clause lists if the dict key is
     “day".
 
     Inputs:
@@ -195,14 +198,14 @@ def process_day(col, value, args, where):
 
 def process_time(col, value, where):
     '''
-    Processes the necessary lists if the dict key is 
+    Processes the necessary lists if the dict key is
     "time_start" or "time_end"
 
     Inputs:
         col: (str) the dictionary key
         value: (int) the start/end time
         where: (lst) the list for WHERE clause
-    
+
     Returns:
         None
     '''
@@ -222,12 +225,12 @@ def process_relations(relations, on):
     Input:
         relations: list that will be used in the JOIN clause
         on: list that will be used in the ON clause
-    
-    Returns: 
+
+    Returns:
         None
     '''
 
-    relations.append("meeting_patterns") 
+    relations.append("meeting_patterns")
     relations.append("sections")
     on.append("courses.course_id = sections.course_id")
     on.append("sections.meeting_pattern_id = meeting_patterns.meeting_pattern_id")
@@ -235,7 +238,7 @@ def process_relations(relations, on):
 
 def process_enroll(col, value, args, select, where):
     '''
-    Processes the necessary lists if the dict key is 
+    Processes the necessary lists if the dict key is
     "enroll_lower" or "enroll_upper"
 
     Inputs:
@@ -248,7 +251,11 @@ def process_enroll(col, value, args, select, where):
     Returns
         None
     '''
-
+    ### GRADER COMMENT
+    # When user input specifies both enroll_lower and enroll_upper,
+    # you call this function twice, which means you appended
+    # "sections.enrollment" to select twice.
+    # Penalty: -0.5 in Implementation Details - attributes
     select.append("sections.enrollment")
     if col == "enroll_lower":
         where.append("sections.enrollment >= ?")
@@ -277,18 +284,18 @@ def construct_query(select, relations, on, where):
                     " FROM " + " JOIN ".join(relations) +
                     " ON " + " AND ".join(on) +
                     " COLLATE NOCASE")
-            
+
         if on == []:
             query = ("SELECT " + ", ".join(select) +
                 " FROM " + " JOIN ".join(relations) +
-                " WHERE " + " COLLATE NOCASE AND ".join(where) + 
+                " WHERE " + " COLLATE NOCASE AND ".join(where) +
                 " COLLATE NOCASE")
 
     else:
         query = ("SELECT " + ", ".join(select) +
             " FROM " + " JOIN ".join(relations) +
             " ON " + " AND ".join(on) +
-            " WHERE " + " COLLATE NOCASE AND ".join(where) + 
+            " WHERE " + " COLLATE NOCASE AND ".join(where) +
             " COLLATE NOCASE")
 
     return query
@@ -400,4 +407,3 @@ EXAMPLE_4 = {"dept": "CMSC",
              "terms" : "CALCULUS"}
 
 EXAMPLE_5 = {"dept": "math", "day": ["TR"]}
-

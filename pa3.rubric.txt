@@ -1,0 +1,35 @@
+Points:
+    - Test Cases:
+        Points Possible: 25
+        Points Obtained: 21
+
+    - Structure/Style:
+        Points Possible: 20
+        Points Obtained: 19
+
+    - Implementation Details - Database interactions:
+        Points Possible: 8
+        Points Obtained: 8
+
+    - Implementation Details - attributes:
+        Points Possible: 10
+        Points Obtained: 9.5
+
+    - Implementation Details - joins:
+        Points Possible: 10
+        Points Obtained: 10
+
+    - Implementation Details - where clause:
+        Points Possible: 12
+        Points Obtained: 12
+
+    - Implementation Details - special cases:
+        Points Possible: 15
+        Points Obtained: 15
+
+Total Points: 94.5 / 100
+
+Comments: >
+    Test Case Details:
+    -2: empty user input: Test failed with an exception: near "COLLATE": syntax error
+    -2: repetitive "enrollment" selected
