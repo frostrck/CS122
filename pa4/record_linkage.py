@@ -16,17 +16,18 @@ def find_matches(mu, lambda_, block_on_city=False):
     matches, and unmatches across the two given datasets.
 
     Input:
-        mu:
-        lambda:
-        block_on_city:
+        mu: (float) max acceptable false positive
+        lambda: (float) max acceptable false negative
+        block_on_city: (bool)
 
-    Returns
-        (tuple of dataframes): (matches, possible_matches, unmatches)
+    Returns: (tuple) of dataframes: matches, possible_matches, unmatches
     '''
 
-    header_list = ["rest_name", "city", "address"]
-    zagat = pd.read_csv("zagat.csv", names = header_list)
-    fodors = pd.read_csv("fodors.csv", names = header_list)
+    z_header = ["z_rest_name", "z_city", "z_address"]
+    f_header = ["f_rest_name", "f_city", "f_address"]
+    
+    zagat = pd.read_csv("zagat.csv", names = z_header )
+    fodors = pd.read_csv("fodors.csv", names = f_header)
     known = pd.read_csv("known_links.csv", names = ["zagat", "fodors"])
 
     matched_pairs = pair(known)
@@ -41,7 +42,15 @@ def find_matches(mu, lambda_, block_on_city=False):
     match_tuples, possible_tuples, unmatch_tuples =  \
             assign_tuple(match_tup, unmatch_tup, mu, lambda_)
 
-    pass
+    match_pairs, possible_pairs, unmatch_pairs = find_all_matches(zagat, fodors, 
+            match_tuples, possible_tuples, unmatch_tuples, block_on_city)
+
+    grand_header = z_header + f_header
+    all_matches = combine_indices(zagat, fodors, match_pairs, grand_header)
+    all_unmatches = combine_indices(zagat, fodors, unmatch_pairs, grand_header)
+    all_possibles = combine_indices(zagat, fodors, possible_pairs, grand_header)
+
+    return all_matches, all_possibles, all_unmatches
 
 
 def pair(known_links):
@@ -53,8 +62,7 @@ def pair(known_links):
     Input:
         known_links: pandas dataframe
     
-    Returns:
-        (lst) list of tuples of indeces for each match
+    Returns: (lst) of tuples of indeces for each match
     '''
 
     pairs = [(x, y) for x, y in zip(known_links["zagat"], known_links["fodors"])]
@@ -72,13 +80,11 @@ def create_matches(df1, df2, pairs):
         df2
         pairs: (lst) of tuples containing indices
     
-    Returns:
-        (pandas dataframe)
+    Returns: pandas dataframe
     '''
 
     header = ["z_rest_name", "z_city", "z_address", 
                 "f_rest_name", "f_city", "f_address"]
-
     matches = combine_indices(df1, df2, pairs, header)
 
     return matches
@@ -144,12 +150,10 @@ def generate_tuples(df1, df2, indices):
         df2
         indices: (lst) lst of tuples of indices
     
-    Returns:
-        (dict) of tuples of j-w distances
+    Returns: (dict) of tuples of j-w distances
     '''
 
     tuples_dict = {}
-
     for pair in indices:
         ind1, ind2 = pair
         name_score = jf.jaro_winkler(df1.loc[ind1, 'z_rest_name'], df2.loc[ind2, 'f_rest_name'])
@@ -165,7 +169,7 @@ def generate_tuples(df1, df2, indices):
     return tuples_dict
 
 
-def assign_tuple(match_tup, unmatch_tup, mu, lambda_):
+def assign_tuple(matched_tup, unmatched_tup, mu, lambda_):
     '''
     From a list of matched tuples and unmatched tuples,
     partition all possible tuples into match, unmatch, 
@@ -178,22 +182,21 @@ def assign_tuple(match_tup, unmatch_tup, mu, lambda_):
         mu: (float) false pos threshhold
         lambda_: (float) flase neg threshhold
 
-    Returns:
+    Returns: (tuple) of sets of match, possible, and unmatch tuples
     '''
     match_tuples = set()
     possible_tuples = set()
     unmatch_tuples = set()
-
     all_tuples = []
     levels = ["high", "medium", "low"]
+
     for level1 in levels:
         for level2 in levels:
             for level3 in levels:
                 all_tuples.append((level1, level2, level3))
 
-    match_counts = count_tuples(match_tup)
-    unmatch_counts = count_tuples(unmatch_tup)
-
+    match_counts = count_tuples(matched_tup)
+    unmatch_counts = count_tuples(unmatched_tup)
     m, u = calc_tup_prob(match_counts, unmatch_counts, all_tuples)
     remaining_tup = all_tuples.copy()
 
@@ -203,7 +206,6 @@ def assign_tuple(match_tup, unmatch_tup, mu, lambda_):
             remaining_tup.remove(tup)
 
     sorted_tuples = prob_sort(m, u, remaining_tup)
-
     false_pos = 0
     false_neg = 0
 
@@ -225,11 +227,10 @@ def assign_tuple(match_tup, unmatch_tup, mu, lambda_):
         if tup not in match_tuples and tup not in unmatch_tuples:
             possible_tuples.add(tup)
 
-    print(len(unmatch_tuples) + len(possible_tuples) + len(match_tuples))
     return match_tuples, possible_tuples, unmatch_tuples
 
 
-def count_tuples(tups_dict):
+def count_tuples(tuples_dict):
     '''
     Given a dict of tuples, count their number
     of times of appearance and store them into a dictionary
@@ -237,12 +238,11 @@ def count_tuples(tups_dict):
     Inpus:
         tups: (dict) of indices and tuple
     
-    Returns:
-        (dict) of counts
+    Returns: (dict) of counts
     '''
-    tup_counts = {}
-    tup_list = list(tups_dict.values())
 
+    tup_counts = {}
+    tup_list = list(tuples_dict.values())
     for tup in tup_list:
         if tup in tup_counts:
             tup_counts[tup] += 1
@@ -290,13 +290,12 @@ def prob_sort(m, u, remaining_tuples):
     sort tuples based on decreasing m / u
 
     Inputs:
-        m:
-        u:
-        remaining_tuples:
+        m: (dict) relative frequency of a tuple in matches
+        u: (dict) relative frequency of a tuple in unmatches
+        remaining_tuples: (lst) all tuples (excluding m = u = 0)
     
-    Returns:
-        (lst) of sorted tuples (u = 0 first, then in
-        decreasing m / u)
+    Returns: (lst) of sorted tuples in the order: u = 0 first, 
+                then in decreasing m / u
     '''
     
     key = lambda x: -1 if u[x] == 0 else m[x] / u[x]
@@ -312,38 +311,77 @@ def prob_sort(m, u, remaining_tuples):
 
     return sorted_tuples
 
-def find_all_matches(df1, df2, match_tuples, possible_tuples, unmatch_tuples):
-    for ind1 in df1.itertuples():
-        for ind2 in df2.itertuples():
-            index_pair = (ind1, ind2)
 
+def generate_all_indices(df1, df2, block_on_city):
+    '''
+    Takes in two dataframes and generate a list
+    of tuples of all possible combinations of
+    their indices.
+
+    Inputs:
+        df1
+        df2
+    
+    Returns: (lst) of tuples of possible indices
+    '''
+
+    size1 = df1.index.size
+    size2 = df2.index.size
+
+    if block_on_city:
+        all_indices = []
+        for x in range(0, size1):
+            for y in range(0, size2):
+                if df1.iloc[x,1] == df2.iloc[y,1]:
+                    all_indices.append((x, y))
+    else:
+        all_indices = [(x, y) for x in range(0, size1) for y in range(0, size2)]
+
+    return all_indices
+
+
+def find_all_matches(df1, df2, match_tuples, possible_tuples, unmatch_tuples, block_on_city = False):
+    '''
+    Given two dataframes, determine whether each pair is a 
+    match, unmatch, or possible match, and output
+    three lists that contain the indices of pairs
+    for each possibility
+
+    Inputs:
+        df1
+        df2
+        match_tuples: (set) tuples that are considered matches
+        possible_tuples: (set) tuples that are considered possible matches
+        unmatch_tuples: (set) tuples that are considered unmatches
+        block_on_city: (bool)
+
+    Returns: (tuple) of lists of indices that are matches, possibles, and unmatches
+    '''
+
+    match_pairs = []
+    possible_pairs = []
+    unmatch_pairs = []
+    all_indices = generate_all_indices(df1, df2, block_on_city)
+    
+    all_tuples = generate_tuples(df1, df2, all_indices)
+
+    for pair, tup in all_tuples.items():
+        if tup in match_tuples:
+            match_pairs.append(pair)
+        elif tup in possible_tuples:
+            possible_pairs.append(pair)
+        else:
+            unmatch_pairs.append(pair)
+
+    return match_pairs, possible_pairs, unmatch_pairs
 
 
 if __name__ == '__main__':
-
-    header_list = ["rest_name", "city", "address"]
-    zagat = pd.read_csv("zagat.csv", names = header_list)
-    fodors = pd.read_csv("fodors.csv", names = header_list)
-    known = pd.read_csv("known_links.csv", names = ["zagat", "fodors"])
-    zs = zagat.sample(1000, replace = True, random_state = 1234)
-    fs = fodors.sample(1000, replace = True, random_state = 5678)
-
-    pairs = pair(known)
-    matches = create_matches(zagat, fodors, pairs)
-    unmatches = create_unmatches(zagat, fodors)
     
-    match_ind = [(x, x) for x in range(0, 50)]
-    unmatch_ind = [(x, x) for x in range(0, 1000)]
-    match_tup = generate_tuples(matches, matches, match_ind)
-    unmatch_tup = generate_tuples(unmatches, unmatches, unmatch_ind)
+    matches, possibles, unmatches = \
+        find_matches(0.005, 0.005, block_on_city=False)
 
-    print(assign_tuple(match_tup, unmatch_tup, 0.005, 0.005))
-    print(len([(x, y) for x in range(0, 50) for y in range(0, 1000)]))
-
-    # matches, possibles, unmatches = \
-    #     find_matches(0.005, 0.005, block_on_city=False)
-
-    # print("Found {} matches, {} possible matches, and {} "
-    #       "unmatches with no blocking.".format(matches.shape[0],
-    #                                            possibles.shape[0],
-    #                                            unmatches.shape[0]))
+    print("Found {} matches, {} possible matches, and {} "
+          "unmatches with no blocking.".format(matches.shape[0],
+                                               possibles.shape[0],
+                                               unmatches.shape[0]))
