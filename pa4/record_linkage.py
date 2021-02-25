@@ -93,7 +93,7 @@ def create_matches(df1, df2, pairs):
 def create_unmatches(df1, df2):
     '''
     Takes in two dataframes and generate 
-    1000 pairs of restaurants that are unmatches
+    1000 pairs of restaurants that are (most likely) unmatches
     at random.
 
     Inputs:
@@ -125,6 +125,14 @@ def combine_indices(df1, df2, indices, header):
     '''
     Generate a new dataframe from tuples
     of indices and header.
+
+    Inputs:
+        df1
+        df2
+        indices: (lst) of indices from each df that we are merging
+        header: (lst) of columns for new df
+
+    Returns: (df) merged dataframe
     '''
 
     rows = []
@@ -377,7 +385,6 @@ def find_all_matches(df1, df2, match_tuples, possible_tuples, unmatch_tuples, bl
 
 
 if __name__ == '__main__':
-    
     matches, possibles, unmatches = \
         find_matches(0.005, 0.005, block_on_city=False)
 
