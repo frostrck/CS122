@@ -5,7 +5,7 @@
 
 import numpy as np
 import pandas as pd
-import jellyfish
+import jellyfish as jf
 import util
 
 def find_matches(mu, lambda_, block_on_city=False):
@@ -32,7 +32,16 @@ def find_matches(mu, lambda_, block_on_city=False):
     matched_pairs = pair(known)
     matches = create_matches(zagat, fodors, matched_pairs)
     unmatches = create_unmatches(zagat, fodors)
-    return known
+
+    match_ind = [(x, x) for x in range(0, 50)]
+    unmatch_ind = [(x, x) for x in range(0, 1000)]
+    match_tup = generate_tuples(matches, matches, match_ind)
+    unmatch_tup = generate_tuples(unmatches, unmatches, unmatch_ind)
+
+    match_tuples, possible_tuples, unmatch_tuples =  \
+            assign_tuple(match_tup, unmatch_tup, mu, lambda_)
+
+    pass
 
 
 def pair(known_links):
@@ -54,9 +63,22 @@ def pair(known_links):
 
 
 def create_matches(df1, df2, pairs):
+    '''
+    Create a merged dataframe from a list
+    of tuples of indices of known matches.
+
+    Inputs:
+        df1
+        df2
+        pairs: (lst) of tuples containing indices
+    
+    Returns:
+        (pandas dataframe)
+    '''
 
     header = ["z_rest_name", "z_city", "z_address", 
                 "f_rest_name", "f_city", "f_address"]
+
     matches = combine_indices(df1, df2, pairs, header)
 
     return matches
@@ -67,7 +89,15 @@ def create_unmatches(df1, df2):
     Takes in two dataframes and generate 
     1000 pairs of restaurants that are unmatches
     at random.
+
+    Inputs:
+        df1
+        df2
+
+    Returns:
+        (pandas dataframe)
     '''
+
     header = ["z_rest_name", "z_city", "z_address", 
                 "f_rest_name", "f_city", "f_address"]
 
@@ -90,8 +120,8 @@ def combine_indices(df1, df2, indices, header):
     Generate a new dataframe from tuples
     of indices and header.
     '''
-    rows = []
 
+    rows = []
     for pair in indices:
         z, f = pair
         z_rest = df1.loc[z].tolist()
@@ -103,29 +133,53 @@ def combine_indices(df1, df2, indices, header):
     return merged_df
 
 
-def generate_tuples(df):
+def generate_tuples(df1, df2, indices):
     '''
-    For a given dataframe, compute the 
+    For given dataframes, compute the 
     tuple of Jaro-Winkler distances for the 
-    pair of restaurants in each row.
-    '''
-    tuples = []
+    pair of restaurants in the pairs of indices.
 
-    for index, row in df.iterrows():
-        name_score = jellyfish.jaro_winkler(row['z_rest_name'], row['f_rest_name'])
-        city_score = jellyfish.jaro_winkler(row['z_city'], row['f_city'])
-        add_score = jellyfish.jaro_winkler(row['z_address'], row['f_address'])
+    Inputs:
+        df1
+        df2
+        indices: (lst) lst of tuples of indices
+    
+    Returns:
+        (dict) of tuples of j-w distances
+    '''
+
+    tuples_dict = {}
+
+    for pair in indices:
+        ind1, ind2 = pair
+        name_score = jf.jaro_winkler(df1.loc[ind1, 'z_rest_name'], df2.loc[ind2, 'f_rest_name'])
+        city_score = jf.jaro_winkler(df1.loc[ind1, 'z_city'], df2.loc[ind2, 'f_city'])
+        add_score = jf.jaro_winkler(df1.loc[ind1, 'z_address'], df2.loc[ind2, 'f_address'])
 
         name_cat = util.get_jw_category(name_score)
         city_cat = util.get_jw_category(city_score)
         add_cat = util.get_jw_category(add_score)
         
-        tuples.append((name_cat, city_cat, add_cat))
+        tuples_dict[pair] = (name_cat, city_cat, add_cat)
 
-    return tuples
+    return tuples_dict
 
 
 def assign_tuple(match_tup, unmatch_tup, mu, lambda_):
+    '''
+    From a list of matched tuples and unmatched tuples,
+    partition all possible tuples into match, unmatch, 
+    possible according acceptable false pos and false
+    neg rate.
+
+    Inputs:
+        match_tup: (lst) of tuples that occured in matches
+        unmatch_tup: (lst) of tuples that occured in unmatches
+        mu: (float) false pos threshhold
+        lambda_: (float) flase neg threshhold
+
+    Returns:
+    '''
     match_tuples = set()
     possible_tuples = set()
     unmatch_tuples = set()
@@ -175,14 +229,21 @@ def assign_tuple(match_tup, unmatch_tup, mu, lambda_):
     return match_tuples, possible_tuples, unmatch_tuples
 
 
-def count_tuples(tups):
+def count_tuples(tups_dict):
     '''
-    Given a list of tuples, count their number
+    Given a dict of tuples, count their number
     of times of appearance and store them into a dictionary
+
+    Inpus:
+        tups: (dict) of indices and tuple
+    
+    Returns:
+        (dict) of counts
     '''
     tup_counts = {}
+    tup_list = list(tups_dict.values())
 
-    for tup in tups:
+    for tup in tup_list:
         if tup in tup_counts:
             tup_counts[tup] += 1
         else:
@@ -195,6 +256,15 @@ def calc_tup_prob(match_counts, unmatch_counts, all_tuples):
     '''
     Given a dict of tuple counts, calculate their relative
     frequency that they appear in matches/unmatches.
+
+    Inputs:
+        match_counts: (dict) number of appearance in matches
+        unmatch_counts: (dict) numer of appearance in unmatches
+        all_tuples: (lst) all possible tuple combinations
+    
+    Returns:
+        m: (dict) tuples' relative freq in matches
+        u: (dict) tuples' relative freq in unmatches
     '''
     m = {}
     u = {}
@@ -218,6 +288,15 @@ def prob_sort(m, u, remaining_tuples):
     Given the relative frequencies 
     of appearance in matches and unmatches,
     sort tuples based on decreasing m / u
+
+    Inputs:
+        m:
+        u:
+        remaining_tuples:
+    
+    Returns:
+        (lst) of sorted tuples (u = 0 first, then in
+        decreasing m / u)
     '''
     
     key = lambda x: -1 if u[x] == 0 else m[x] / u[x]
@@ -228,7 +307,15 @@ def prob_sort(m, u, remaining_tuples):
     while u[remaining_tuples[first_nonzero]] == 0:
         first_nonzero += 1
 
-    return remaining_tuples[:first_nonzero] + remaining_tuples[first_nonzero:][::-1]
+    sorted_tuples = remaining_tuples[:first_nonzero
+                    ] + remaining_tuples[first_nonzero:][::-1]
+
+    return sorted_tuples
+
+def find_all_matches(df1, df2, match_tuples, possible_tuples, unmatch_tuples):
+    for ind1 in df1.itertuples():
+        for ind2 in df2.itertuples():
+            index_pair = (ind1, ind2)
 
 
 
@@ -245,10 +332,13 @@ if __name__ == '__main__':
     matches = create_matches(zagat, fodors, pairs)
     unmatches = create_unmatches(zagat, fodors)
     
-    match_tup = generate_tuples(matches)
-    unmatch_tup = generate_tuples(unmatches)
+    match_ind = [(x, x) for x in range(0, 50)]
+    unmatch_ind = [(x, x) for x in range(0, 1000)]
+    match_tup = generate_tuples(matches, matches, match_ind)
+    unmatch_tup = generate_tuples(unmatches, unmatches, unmatch_ind)
 
     print(assign_tuple(match_tup, unmatch_tup, 0.005, 0.005))
+    print(len([(x, y) for x in range(0, 50) for y in range(0, 1000)]))
 
     # matches, possibles, unmatches = \
     #     find_matches(0.005, 0.005, block_on_city=False)
