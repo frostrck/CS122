@@ -148,6 +148,7 @@ def assign_tuple(match_tup, unmatch_tup, mu, lambda_):
             possible_tuples.add(tup)
             remaining_tup.remove(tup)
 
+    print(possible_tuples)
     sorted_tuples = prob_sort(m, u, remaining_tup)
 
     false_pos = 0
@@ -156,22 +157,27 @@ def assign_tuple(match_tup, unmatch_tup, mu, lambda_):
     for i, tup in enumerate(sorted_tuples):
         false_pos += u[tup]
         if false_pos <= mu:
+            print(false_pos)
             match_tuples.add(tup)
         else:
             break
+    print(match_tuples)
 
     for i, tup in enumerate(sorted_tuples[::-1]):
         false_neg += m[tup]
-        if false_pos <= lambda_ and tup not in match_tuples:
+        if false_neg <= lambda_ and tup not in match_tuples:
             unmatch_tuples.add(tup)
-            print(false_pos)
+            print(false_neg)
         else:
             break
+    print(unmatch_tuples)
 
     for tup in sorted_tuples:
         if tup not in match_tuples and tup not in unmatch_tuples:
             possible_tuples.add(tup)
 
+    print(possible_tuples)
+    print(len(unmatch_tuples) + len(possible_tuples) + len(match_tuples))
     return unmatch_tuples
 
 
@@ -248,10 +254,7 @@ if __name__ == '__main__':
     match_tup = generate_tuples(matches)
     unmatch_tup = generate_tuples(unmatches)
 
-    print(assign_tuple(match_tup, unmatch_tup, 0.05, 0.82))
-
-
-
+    print(assign_tuple(match_tup, unmatch_tup, -1, 1))
 
     # matches, possibles, unmatches = \
     #     find_matches(0.005, 0.005, block_on_city=False)
