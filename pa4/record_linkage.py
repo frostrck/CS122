@@ -62,7 +62,7 @@ def pair(known_links):
     Input:
         known_links: pandas dataframe
     
-    Returns: (lst) of tuples of indeces for each match
+    Returns: (lst) of tuples of indices for each match
     '''
 
     pairs = [(x, y) for x, y in zip(known_links["zagat"], known_links["fodors"])]
@@ -158,7 +158,7 @@ def generate_tuples(df1, df2, indices):
         df2
         indices: (lst) lst of tuples of indices
     
-    Returns: (dict) of tuples of j-w distances
+    Returns: (dict) of indices and tuples of j-w distances
     '''
 
     tuples_dict = {}
@@ -182,7 +182,7 @@ def assign_tuple(matched_tup, unmatched_tup, mu, lambda_):
     From a list of matched tuples and unmatched tuples,
     partition all possible tuples into match, unmatch, 
     possible according acceptable false pos and false
-    neg rate.
+    neg rates.
 
     Inputs:
         match_tup: (lst) of tuples that occured in matches
@@ -192,12 +192,13 @@ def assign_tuple(matched_tup, unmatched_tup, mu, lambda_):
 
     Returns: (tuple) of sets of match, possible, and unmatch tuples
     '''
+
     match_tuples = set()
     possible_tuples = set()
     unmatch_tuples = set()
+
     all_tuples = []
     levels = ["high", "medium", "low"]
-
     for level1 in levels:
         for level2 in levels:
             for level3 in levels:
@@ -240,7 +241,7 @@ def assign_tuple(matched_tup, unmatched_tup, mu, lambda_):
 
 def count_tuples(tuples_dict):
     '''
-    Given a dict of tuples, count their number
+    Given a dict indices and tuples, count their number
     of times of appearance and store them into a dictionary
 
     Inpus:
@@ -370,7 +371,6 @@ def find_all_matches(df1, df2, match_tuples, possible_tuples, unmatch_tuples, bl
     possible_pairs = []
     unmatch_pairs = []
     all_indices = generate_all_indices(df1, df2, block_on_city)
-    
     all_tuples = generate_tuples(df1, df2, all_indices)
 
     for pair, tup in all_tuples.items():
