@@ -103,7 +103,7 @@ class Hash_Table:
         values = self.table[:]
         self.table = [None] * self.capacity
         self.size = 0
-        # print("expanded, length is %s" % self.capacity)
+        print("expanded, length is %s" % self.capacity)
 
         for pair in values:
             if pair is not None:
@@ -123,14 +123,17 @@ class Hash_Table:
         return "the hash table is: %s" % (self.table)
 
 if __name__ == "__main__":
-    lst = [(str(i), str(i)) for i in range(1, 100)]
+    lst = [(str(i), str(i)) for i in range(1, 1000)]
     ht = Hash_Table(2, "empty")
 
     for pair in lst:
         key, val = pair
         ht.update(key, val)
-        
+
     print(ht)
+    ht.update("a", "aaa")
+    print(ht.lookup("a"))
+    print(ht.lookup("aa"))
 
 
     
