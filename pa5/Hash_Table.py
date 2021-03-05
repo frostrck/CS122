@@ -8,11 +8,11 @@ GROWTH_RATIO = 2
 
 class Hash_Table:
 
-    def __init__(self,cells,defval):
+    def __init__(self, cells, defval):
         '''
-        Construct a new hash table with a fixed number of cells equal to the
-        parameter "cells", and which yields the value defval upon a lookup to a
-        key that has not previously been inserted
+        Construct a new, empty hash table with a fixed number of cells equal to the
+        parameter "cells", which yields the value defval upon looking up an empty
+        cell
 
         Inputs:
             cells: (int) size of our initial hash table
@@ -28,46 +28,63 @@ class Hash_Table:
         
 
 
-    def lookup(self,key):
+    def lookup(self, key):
         '''
         Retrieve the value associated with the specified key in the hash table,
         or return the default value if it has not previously been inserted.
 
         Input: 
-            key: (int) key we wish to look up in our table
+            key: (str) key we wish to look up in our table
         
         Returns: 
             hash table value of the associated key
         '''
-        if self.table[key] != None:
-            return self.table[key]
-        else:
-            return self.defval
+        start = self.hash_(key)
+
+        for i in range(0, self.capacity):
+            index = (start + i) % self.capacity
+            if self.table[index] is not None:
+                if self.table[index][0] == key:
+                    return self.table[index][1]
+                else:
+                    continue
+            else:
+                return self.defval
 
 
-    def update(self,key,val):
+     
+    def update(self, key, val):
         '''
         Change the value associated with key "key" to value "val".
         If "key" is not currently present in the hash table,  insert it with
-        value "val". If our table occupy rate exceeds TOO_FULL, 
+        value "val". If our table occupy rate exceeds TOO_FULL, increase the
+        hash table capacity and rehash the entire table.
 
         Input: 
+            key: (str) key of a pair
+            val: (str) value of a pair
 
         Returns:
             None
         '''
-        temp_key = key 
+        start = self.hash_(key)
 
-        while self.table[temp_key] != None:
-            temp_key += 1
-        
-        self.table[temp_key] = val
-        self.size += 1
+        for i in range(0, self.capacity):
+            index = (start + i) % self.capacity
+            if self.table[index] is None:
+                self.table[index] = (key, val)
+                self.size += 1
+                break
+            else:
+                if self.table[index][0] == key:
+                    self.table[index] = (key, val)
+                    break
+                else: 
+                    continue
 
         if self.size / self.capacity >= TOO_FULL:
             self.rehash()
 
-    
     def hash_(self, s):
         '''
         A hash function that takes in a string and returns a hash 
@@ -78,6 +95,7 @@ class Hash_Table:
             h = h * 37 
             h += ord(char)
             h = h % self.capacity
+
         return h
     
     def rehash(self):
@@ -85,20 +103,34 @@ class Hash_Table:
         values = self.table[:]
         self.table = [None] * self.capacity
         self.size = 0
+        # print("expanded, length is %s" % self.capacity)
 
-        for val in values:
-            if val != None:
-                key = self.hash_(val)
+        for pair in values:
+            if pair is not None:
+                key, val = pair
                 self.update(key, val)
 
+
     def __str__(self): 
+        '''
+        A string representation for our class that returns
+        our hash table as a list
+        Input:
+            None
+        Returns:
+            (str) hash table
+        '''
         return "the hash table is: %s" % (self.table)
 
 if __name__ == "__main__":
-    ht = Hash_Table(1, "empty")
+    lst = [(str(i), str(i)) for i in range(1, 100)]
+    ht = Hash_Table(2, "empty")
+
+    for pair in lst:
+        key, val = pair
+        ht.update(key, val)
+        
     print(ht)
-    key = ht.hash_("hi")
-    ht.update(key, "hi")
-    print(ht)
-    print(ht.lookup(1))
-    print(ht.lookup(2))
+
+
+    
