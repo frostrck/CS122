@@ -8,6 +8,7 @@ GROWTH_RATIO = 2
 
 class Hash_Table:
 
+
     def __init__(self, cells, defval):
         '''
         Construct a new, empty hash table with a fixed number of cells equal to the
@@ -26,7 +27,6 @@ class Hash_Table:
         self.capacity = cells
         self.table = [None] * cells
         
-
 
     def lookup(self, key):
         '''
@@ -52,7 +52,6 @@ class Hash_Table:
                 return self.defval
 
 
-     
     def update(self, key, val):
         '''
         Change the value associated with key "key" to value "val".
@@ -85,6 +84,7 @@ class Hash_Table:
         if self.size / self.capacity >= TOO_FULL:
             self.rehash()
 
+
     def hash_(self, s):
         '''
         A hash function that takes in a string and returns a hash 
@@ -95,15 +95,14 @@ class Hash_Table:
             h = h * 37 
             h += ord(char)
             h = h % self.capacity
-
         return h
     
+
     def rehash(self):
         self.capacity = self.capacity * GROWTH_RATIO
         values = self.table[:]
         self.table = [None] * self.capacity
         self.size = 0
-        print("expanded, length is %s" % self.capacity)
 
         for pair in values:
             if pair is not None:
@@ -114,26 +113,13 @@ class Hash_Table:
     def __str__(self): 
         '''
         A string representation for our class that returns
-        our hash table as a list
+        our hash table as a list.
+
         Input:
             None
         Returns:
             (str) hash table
         '''
         return "the hash table is: %s" % (self.table)
-
-if __name__ == "__main__":
-    lst = [(str(i), str(i)) for i in range(1, 1000)]
-    ht = Hash_Table(2, "empty")
-
-    for pair in lst:
-        key, val = pair
-        ht.update(key, val)
-
-    print(ht)
-    ht.update("a", "aaa")
-    print(ht.lookup("a"))
-    print(ht.lookup("aa"))
-
 
     
