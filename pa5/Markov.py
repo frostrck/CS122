@@ -35,7 +35,7 @@ class Markov:
         character sequences modeled by this particular Markov model
         This probability is *not* normalized by the length of the string.
 
-        Inputs:
+        Input:
             s: (str) a new string of texts
 
         Returns:
