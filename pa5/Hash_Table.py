@@ -1,7 +1,6 @@
 # CS122 W'21: Markov models and hash tables
 # Corry Ke
 
-
 TOO_FULL = 0.5
 GROWTH_RATIO = 2
 

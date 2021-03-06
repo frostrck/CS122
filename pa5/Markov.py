@@ -6,7 +6,7 @@ import math
 import Hash_Table
 
 # from os import listdir                these two imports were for getting filenames in 
-# from os.path import isfile, join      loop testing in shell, not used in actual coding of Markov
+# from os.path import isfile, join      loop testing in shell
 
 HASH_CELLS = 57
 
