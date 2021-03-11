@@ -1,0 +1,45 @@
+Points:
+    - Style:
+        Points Possible: 20
+        Points Obtained: 20
+
+    - Decomposition:
+        Points Possible: 8
+        Points Obtained: 8
+
+    - Results:
+        Points Possible: 8
+        Points Obtained: 8
+
+    - Performance:
+        Points Possible: 7
+        Points Obtained: 7
+
+    - Implementation Details - process data:
+        Points Possible: 10
+        Points Obtained: 10
+
+    - Implementation Details - Compute category tuple:
+        Points Possible: 4
+        Points Obtained: 4
+
+    - Implementation Details - generate probabilities:
+        Points Possible: 10
+        Points Obtained: 10
+
+    - Implementation Details - label possible tuples:
+        Points Possible: 19
+        Points Obtained: 19
+
+    - Implementation Details - classify pairs of rows:
+        Points Possible: 9
+        Points Obtained: 9
+
+    - Implementation Details - blocking:
+        Points Possible: 5
+        Points Obtained: 5
+
+Total Points: 100 / 100
+
+Comments: >
+    Good Job!
