@@ -1,0 +1,29 @@
+Points:
+    - Test Cases:
+        Points Possible: 15
+        Points Obtained: 13
+
+    - Structure and Style:
+        Points Possible: 30
+        Points Obtained: 29
+
+    - Implementation Details - hash operations:
+        Points Possible: 25
+        Points Obtained: 25
+
+    - Implementation Details - rehashing:
+        Points Possible: 10
+        Points Obtained: 10
+
+    - Implementation Details - training Markov model:
+        Points Possible: 10
+        Points Obtained: 10
+
+    - Implementation Details - computing log probability:
+        Points Possible: 10
+        Points Obtained: 10
+
+Total Points: 97 / 100
+
+Comments: >
+    Well done!

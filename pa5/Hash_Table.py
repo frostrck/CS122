@@ -96,7 +96,8 @@ class Hash_Table:
             h = h % self.capacity
         return h
     
-
+### GRADER COMMENT: missing docstring
+### PENALTY: -1
     def rehash(self):
         self.capacity = self.capacity * GROWTH_RATIO
         values = self.table[:]
